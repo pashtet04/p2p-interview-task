@@ -132,7 +132,7 @@ var (
 		Timeout:   time.Second * 2,
 	}
 
-	cosmosApiEndpoint = "http://localhost:11317/"
+	cosmosApiEndpoint = "http://localhost:1317/"
 
 	up = prometheus.NewDesc(
 		prometheus.BuildFQName("", "", "up"),
