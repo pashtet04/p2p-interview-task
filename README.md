@@ -14,7 +14,8 @@
 
 ## How to run
 
-Для указания Cosmos API необходимо задать переменную окружения `COSMOS_API`, по-умолчанию `http://localhost:113717/`
+- Для указания Cosmos API необходимо задать переменную окружения `COSMOS_API`, по-умолчанию `http://localhost:113717/`
+- Для указания Tendermint API необходимо задать переменную окружения `TENDERMINT_API`, по-умолчанию `http://localhost:26657/`
 
 Для отладки и запуска локально я использовал проброс портов через SSH:
 
@@ -25,9 +26,12 @@ curl localhost:113717/metrics
 
 # HELP cosmos_latest_block_height The latest block id hash
 # TYPE cosmos_latest_block_height untyped
-cosmos_latest_block_height 118815
-# HELP cosmos_latest_block_timestamp Unsync node in s
+cosmos_latest_block_height 150877
+# HELP cosmos_latest_block_timestamp Unsync node in ms
 # TYPE cosmos_latest_block_timestamp untyped
-cosmos_latest_block_timestamp 9
+cosmos_latest_block_timestamp 8
+# HELP cosmos_number_of_peers Number of peers
+# TYPE cosmos_number_of_peers untyped
+cosmos_number_of_peers 0
 ```
 
