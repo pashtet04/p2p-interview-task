@@ -1,11 +1,11 @@
 package main
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -123,16 +123,17 @@ type BlockLatest struct {
 	} `json:"sdk_block"`
 }
 
-var (
-	tr = &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
 	}
-	client = &http.Client{
-		Transport: tr,
-		Timeout:   time.Second * 2,
-	}
+	return fallback
+}
 
-	cosmosApiEndpoint = "http://localhost:1317/"
+var (
+	client = &http.Client{}
+
+	cosmosApiEndpoint = getEnv("COSMOS_API", "http://localhost:11317/")
 
 	up = prometheus.NewDesc(
 		prometheus.BuildFQName("", "", "up"),
@@ -190,8 +191,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	)
 }
 
-func (e *Exporter) GetLatestBlockHash() (string, error) {
-	req, err := http.NewRequest("GET", cosmosApiEndpoint+"cosmos/base/tendermint/v1beta1/blocks/latest", nil)
+func CosmosApiReq(method string, url string) (BlockLatest, error) {
+	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -211,31 +212,17 @@ func (e *Exporter) GetLatestBlockHash() (string, error) {
 
 	var result BlockLatest
 	json.Unmarshal([]byte(body), &result)
+	return result, err
+}
+
+func (e *Exporter) GetLatestBlockHash() (string, error) {
+	result, err := CosmosApiReq("GET", cosmosApiEndpoint+"cosmos/base/tendermint/v1beta1/blocks/latest")
 	return result.Block.Header.Height, err
 }
 
 func (e *Exporter) GetLatestBlockTime() (int64, error) {
-	req, err := http.NewRequest("GET", cosmosApiEndpoint+"cosmos/base/tendermint/v1beta1/blocks/latest", nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	res, err := client.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if res.Body != nil {
-		defer res.Body.Close()
-	}
-
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var result BlockLatest
-	json.Unmarshal([]byte(body), &result)
-	unsynced_ms := result.Block.Header.Time.Unix() - time.Now().Unix()
+	result, err := CosmosApiReq("GET", cosmosApiEndpoint+"cosmos/base/tendermint/v1beta1/blocks/latest")
+	unsynced_ms := time.Now().Unix() - result.Block.Header.Time.Unix()
 	return unsynced_ms, err
 }
 

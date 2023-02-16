@@ -7,12 +7,14 @@
 Забираем вес последнего блока через REST API по пути `cosmos/base/tendermint/v1beta1/blocks/latest` из ключа `Block.Header.Height`
 
 ### Рассинхрон времени этого блока в секундах
-Забираем время синхронизации последнего блока через REST API по пути `cosmos/base/tendermint/v1beta1/blocks/latest` из ключа `Block.Header.Time` и вычитаем текущее время для вычисления разницы времени синхронизации `Block.Header.Time.Unix() - time.Now().Unix()`
+Забираем время синхронизации последнего блока через REST API по пути `cosmos/base/tendermint/v1beta1/blocks/latest` из ключа `Block.Header.Time` и вычитаем его из текущего времени для вычисления разницы времени синхронизации `time.Now().Unix() - Block.Header.Time.Unix()`
 
 ### Количество пиров
 Я что-то в документации не нашел термина peer, и не могу понять, откуда забирать значение.
 
 ## How to run
+
+Для указания Cosmos API необходимо задать переменную окружения `COSMOS_API`, по-умолчанию `http://localhost:113717/`
 
 Для отладки и запуска локально я использовал проброс портов через SSH:
 
@@ -24,8 +26,8 @@ curl localhost:113717/metrics
 # HELP cosmos_latest_block_height The latest block id hash
 # TYPE cosmos_latest_block_height untyped
 cosmos_latest_block_height 118815
-# HELP cosmos_latest_block_timestamp Unsync node in ms
+# HELP cosmos_latest_block_timestamp Unsync node in s
 # TYPE cosmos_latest_block_timestamp untyped
-cosmos_latest_block_timestamp -9
+cosmos_latest_block_timestamp 9
 ```
 
