@@ -123,6 +123,17 @@ type BlockLatest struct {
 	} `json:"sdk_block"`
 }
 
+type NetInfo struct {
+	Jsonrpc string `json:"jsonrpc"`
+	ID      int    `json:"id"`
+	Result  struct {
+		Listening bool          `json:"listening"`
+		Listeners []string      `json:"listeners"`
+		NPeers    string        `json:"n_peers"`
+		Peers     []interface{} `json:"peers"`
+	} `json:"result"`
+}
+
 func getEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
@@ -133,7 +144,8 @@ func getEnv(key, fallback string) string {
 var (
 	client = &http.Client{}
 
-	cosmosApiEndpoint = getEnv("COSMOS_API", "http://localhost:11317/")
+	cosmosApiEndpoint     = getEnv("COSMOS_API", "http://localhost:11317/")
+	tendermintApiEndpoint = getEnv("TENDERMINT_API", "http://localhost:26657/")
 
 	up = prometheus.NewDesc(
 		prometheus.BuildFQName("", "", "up"),
@@ -152,6 +164,12 @@ var (
 		"Unsync node in ms",
 		nil, nil,
 	)
+
+	cosmos_number_of_peers = prometheus.NewDesc(
+		prometheus.BuildFQName("", "", "cosmos_number_of_peers"),
+		"Number of peers",
+		nil, nil,
+	)
 )
 
 type Exporter struct {
@@ -168,6 +186,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- up
 	ch <- cosmos_latest_block_height
 	ch <- cosmos_latest_block_timestamp
+	ch <- cosmos_number_of_peers
 }
 
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
@@ -189,6 +208,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(
 		cosmos_latest_block_timestamp, prometheus.UntypedValue, f,
 	)
+
+	p, _ := e.GetCountPeers()
+	cp, _ := strconv.ParseFloat(p, 64)
+	ch <- prometheus.MustNewConstMetric(
+		cosmos_latest_block_timestamp, prometheus.UntypedValue, cp,
+	)
+
 }
 
 func CosmosApiReq(method string, url string) (BlockLatest, error) {
@@ -215,6 +241,30 @@ func CosmosApiReq(method string, url string) (BlockLatest, error) {
 	return result, err
 }
 
+func TendermintApiReq(method string, url string) (NetInfo, error) {
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if res.Body != nil {
+		defer res.Body.Close()
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var result NetInfo
+	json.Unmarshal([]byte(body), &result)
+	return result, err
+}
+
 func (e *Exporter) GetLatestBlockHash() (string, error) {
 	result, err := CosmosApiReq("GET", cosmosApiEndpoint+"cosmos/base/tendermint/v1beta1/blocks/latest")
 	return result.Block.Header.Height, err
@@ -224,6 +274,11 @@ func (e *Exporter) GetLatestBlockTime() (int64, error) {
 	result, err := CosmosApiReq("GET", cosmosApiEndpoint+"cosmos/base/tendermint/v1beta1/blocks/latest")
 	unsynced_ms := time.Now().Unix() - result.Block.Header.Time.Unix()
 	return unsynced_ms, err
+}
+
+func (e *Exporter) GetCountPeers() (string, error) {
+	result, err := TendermintApiReq("GET", tendermintApiEndpoint+"net_info")
+	return result.Result.NPeers, err
 }
 
 func main() {
