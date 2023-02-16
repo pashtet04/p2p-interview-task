@@ -212,7 +212,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	p, _ := e.GetCountPeers()
 	cp, _ := strconv.ParseFloat(p, 64)
 	ch <- prometheus.MustNewConstMetric(
-		cosmos_latest_block_timestamp, prometheus.UntypedValue, cp,
+		cosmos_number_of_peers, prometheus.UntypedValue, cp,
 	)
 
 }
